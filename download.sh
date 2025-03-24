@@ -1,1 +1,1 @@
-python download.py ./data -d all -c c23 -t videos
+python download.py ./data -d all -c c23 -t videos --server EU2

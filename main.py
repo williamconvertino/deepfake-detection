@@ -23,6 +23,8 @@ def main():
         trainer.prepare_data()
         trainer.train()
     elif args.eval:
+        if args.checkpoint is None:
+            args.checkpoint = "best"
         model = load_model(config_name=args.eval, checkpoint=args.checkpoint)
         evaluator = Evaluator(model=model, num_frames=args.num_frames, aggregation=args.aggregator)
         evaluator.prepare_data()

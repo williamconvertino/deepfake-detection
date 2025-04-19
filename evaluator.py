@@ -9,7 +9,7 @@ from datetime import datetime
 from tqdm import tqdm
 
 class Evaluator:
-    def __init__(self, model, dataset, num_frames=5, batch_size=8, aggregation="50_vote", device=None):
+    def __init__(self, model, dataset, num_frames=5, batch_size=16, aggregation="50_vote", device=None):
         
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.model = model.to(self.device)

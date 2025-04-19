@@ -44,6 +44,8 @@ class Evaluator:
         
         print(f"Evaluating with aggregation method: {self.aggregation}")
 
+        self.prepare_data()
+
         total_videos = 0
         correct_videos = 0
         total_frames = 0

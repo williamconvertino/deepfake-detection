@@ -69,8 +69,8 @@ class FrameDataset(Dataset):
         self.data = video_label_pairs
         self.num_frames = num_frames
         self.transform = transform
-        self.cache_dir = cache_dir
-        os.makedirs(cache_dir, exist_ok=True)
+        self.cache_dir = f"{cache_dir}/{num_frames}"
+        os.makedirs(self.cache_dir, exist_ok=True)
 
     def __len__(self):
         return len(self.data)

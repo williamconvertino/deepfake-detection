@@ -12,6 +12,9 @@ SEED = 42
 DEEPFAKES_ORIGINAL_PATH = "data/original_sequences/youtube/c23/videos"
 DEEPFAKES_MANIPULATED_PATH = "data/manipulated_sequences/Deepfakes/c23/videos"
 
+F2F_ORIGINAL_PATH = "data/original_sequences/youtube/c23/videos"
+F2F_MANIPULATED_PATH = "data/manipulated_sequences/Face2Face/c23/videos"
+
 def deepfakes_title_parser(filename):
     return filename[:3]
     
@@ -24,15 +27,21 @@ def get_video_paths(base_path):
     return video_files
 
 def generate_video_dataset(
-    original_path=DEEPFAKES_ORIGINAL_PATH,
-    manipulated_path=DEEPFAKES_MANIPULATED_PATH,
-    title_parser=deepfakes_title_parser,
+    dataset_type,
     train_ratio=0.7,
     val_ratio=0.15,
     test_ratio=0.15
 ):
-    original_videos = get_video_paths(original_path)
-    manipulated_videos = get_video_paths(manipulated_path)
+    if dataset_type == "deepfakes":
+        title_parser=deepfakes_title_parser,    
+        original_videos = get_video_paths(DEEPFAKES_ORIGINAL_PATH)
+        manipulated_videos = get_video_paths(DEEPFAKES_MANIPULATED_PATH)
+    elif dataset_type == "f2f":
+        title_parser=deepfakes_title_parser,    
+        original_videos = get_video_paths(F2F_ORIGINAL_PATH)
+        manipulated_videos = get_video_paths(F2F_MANIPULATED_PATH)
+    else:
+        raise ValueError("Unsupported dataset type. Choose 'deepfakes' or 'f2f'.")
 
     title_to_videos = {}
     for video_path in original_videos + manipulated_videos:
@@ -65,11 +74,12 @@ def generate_video_dataset(
     return train_data, val_data, test_data
 
 class FrameDataset(Dataset):
-    def __init__(self, video_label_pairs, num_frames=5, transform=None, cache_dir="cached_frames"):
+    def __init__(self, dataset, video_label_pairs, num_frames=5, transform=None, cache_dir="cached_frames"):
+        self.dataset = dataset
         self.data = video_label_pairs
         self.num_frames = num_frames
         self.transform = transform
-        self.cache_dir = f"{cache_dir}/{num_frames}"
+        self.cache_dir = f"{cache_dir}/{dataset}/{num_frames}"
         os.makedirs(self.cache_dir, exist_ok=True)
 
     def __len__(self):

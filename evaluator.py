@@ -8,10 +8,12 @@ import json
 from datetime import datetime
 
 class Evaluator:
-    def __init__(self, model, num_frames=5, batch_size=8, aggregation="50_vote", device=None):
+    def __init__(self, model, dataset, num_frames=5, batch_size=8, aggregation="50_vote", device=None):
+        
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.model = model.to(self.device)
         self.model.eval()
+        self.dataset = dataset
         self.num_frames = num_frames
         self.batch_size = batch_size
         self.aggregation = aggregation # "average" or "X_vote"
@@ -23,8 +25,8 @@ class Evaluator:
         ])
 
     def prepare_data(self):
-        _, _, test_data = generate_video_dataset()
-        self.test_loader = DataLoader(FrameDataset(test_data, self.num_frames, transform=self.transform), batch_size=self.batch_size, shuffle=False)
+        _, _, test_data = generate_video_dataset(dataset_type=self.dataset)
+        self.test_loader = DataLoader(FrameDataset(self.dataset, test_data, self.num_frames, transform=self.transform), batch_size=self.batch_size, shuffle=False)
 
     def aggregate_logits(self, logits):
         b, t, c = logits.size()

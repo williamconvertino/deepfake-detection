@@ -9,9 +9,10 @@ import json
 from dataset import generate_video_dataset, FrameDataset
 
 class Trainer:
-    def __init__(self, model, num_frames=5, batch_size=32, epochs=10, num_workers=8, lr=1e-4, device=None):
+    def __init__(self, model, dataset, num_frames=5, batch_size=32, epochs=10, num_workers=8, lr=1e-4, device=None):
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.model = model.to(self.device)
+        self.dataset = dataset
         self.model_name = model.name
         self.num_frames = num_frames
         self.batch_size = batch_size
@@ -37,10 +38,10 @@ class Trainer:
         self.history = []
 
     def prepare_data(self):
-        train_data, val_data, test_data = generate_video_dataset()
-        self.train_loader = DataLoader(FrameDataset(train_data, self.num_frames, transform=self.transform), batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)
-        self.val_loader = DataLoader(FrameDataset(val_data, self.num_frames, transform=self.transform), batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
-        self.test_loader = DataLoader(FrameDataset(test_data, self.num_frames, transform=self.transform), batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
+        train_data, val_data, test_data = generate_video_dataset(self.dataset)
+        self.train_loader = DataLoader(FrameDataset(self.dataset, train_data, self.num_frames, transform=self.transform), batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)
+        self.val_loader = DataLoader(FrameDataset(self.dataset, val_data, self.num_frames, transform=self.transform), batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
+        self.test_loader = DataLoader(FrameDataset(self.dataset, test_data, self.num_frames, transform=self.transform), batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
 
     def train_epoch(self):
         self.model.train()

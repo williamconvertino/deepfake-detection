@@ -11,7 +11,7 @@ def main():
     parser.add_argument("--visualize", type=str, help="Use with desired config name to visualize the training curve")
     parser.add_argument("--checkpoint", type=str, default=None, help="'best' or 'epoch_X' or leave empty to train from scratch")
     parser.add_argument("--num_epochs", type=int, default=10, help="Number of epochs to train")
-    parser.add_argument("--num_frames", type=int, default=16, help="Number of frames to sample from each video")
+    parser.add_argument("--num_frames", type=int, default=5, help="Number of frames to sample from each video")
     parser.add_argument("--agg", type=str, default="50_vote", help="Aggregation method for evaluation (average or X_vote)")
     args = parser.parse_args()
 

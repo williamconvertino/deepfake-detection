@@ -3,18 +3,18 @@ import random
 import cv2
 import torch
 from torch.utils.data import Dataset
+import torchvision.transforms.functional as TF
 from torchvision.transforms import ToTensor
-from PIL import Image
+import numpy as np
 
 SEED = 42
 
 DEEPFAKES_ORIGINAL_PATH = "data/original_sequences/youtube/c23/videos"
 DEEPFAKES_MANIPULATED_PATH = "data/manipulated_sequences/Deepfakes/c23/videos"
-FRAME_SAVE_BASE = "frames"
 
 def deepfakes_title_parser(filename):
     return filename[:3]
-
+    
 def get_video_paths(base_path):
     video_files = []
     for root, _, files in os.walk(base_path):
@@ -23,36 +23,13 @@ def get_video_paths(base_path):
                 video_files.append(os.path.join(root, file))
     return video_files
 
-def extract_and_save_frames(video_path, save_dir, num_frames):
-    os.makedirs(save_dir, exist_ok=True)
-    cap = cv2.VideoCapture(video_path)
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    if total_frames < num_frames:
-        raise ValueError(f"Video {video_path} has fewer frames than requested: {total_frames} < {num_frames}")
-    indices = [int(i * total_frames / num_frames) for i in range(num_frames)]
-    
-    frame_idx = 0
-    saved = 0
-    while cap.isOpened() and saved < num_frames:
-        ret, frame = cap.read()
-        if not ret:
-            break
-        if frame_idx in indices:
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frame_pil = Image.fromarray(frame_rgb)
-            frame_pil.save(os.path.join(save_dir, f"{saved}.jpg"))
-            saved += 1
-        frame_idx += 1
-    cap.release()
-
 def generate_video_dataset(
     original_path=DEEPFAKES_ORIGINAL_PATH,
     manipulated_path=DEEPFAKES_MANIPULATED_PATH,
     title_parser=deepfakes_title_parser,
     train_ratio=0.7,
     val_ratio=0.15,
-    test_ratio=0.15,
-    num_frames=5
+    test_ratio=0.15
 ):
     original_videos = get_video_paths(original_path)
     manipulated_videos = get_video_paths(manipulated_path)
@@ -64,7 +41,7 @@ def generate_video_dataset(
         if base_title not in title_to_videos:
             title_to_videos[base_title] = []
         title_to_videos[base_title].append((video_path, label))
-
+        
     assert all(len(videos) == 2 for videos in title_to_videos.values()), "Should have 2 videos per title (original and manipulated)"
 
     titles = list(title_to_videos.keys())
@@ -75,36 +52,72 @@ def generate_video_dataset(
     train_end = int(total * train_ratio)
     val_end = train_end + int(total * val_ratio)
 
-    def collect_split(titles_subset, split_name):
+    def collect_split(titles_subset):
         data = []
-        for idx, title in enumerate(titles_subset):
-            for video_path, label in title_to_videos[title]:
-                save_path = os.path.join(FRAME_SAVE_BASE, split_name, f"{num_frames}_frames", str(len(data)))
-                extract_and_save_frames(video_path, save_path, num_frames)
-                data.append((save_path, label))
+        for title in titles_subset:
+            data.extend(title_to_videos[title])
         return data
 
-    train_data = collect_split(titles[:train_end], "train")
-    val_data = collect_split(titles[train_end:val_end], "val")
-    test_data = collect_split(titles[val_end:], "test")
+    train_data = collect_split(titles[:train_end])
+    val_data = collect_split(titles[train_end:val_end])
+    test_data = collect_split(titles[val_end:])
 
     return train_data, val_data, test_data
 
 class FrameDataset(Dataset):
-    def __init__(self, frame_label_pairs, transform=None):
-        self.data = frame_label_pairs
-        self.transform = transform or ToTensor()
+    def __init__(self, video_label_pairs, num_frames=5, transform=None, cache_dir="cached_frames"):
+        self.data = video_label_pairs
+        self.num_frames = num_frames
+        self.transform = transform
+        self.cache_dir = cache_dir
+        os.makedirs(cache_dir, exist_ok=True)
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
-        frame_dir, label = self.data[idx]
-        frame_files = sorted(os.listdir(frame_dir), key=lambda x: int(x.split(".")[0]))
+        video_path, label = self.data[idx]
+        video_id = self._video_id(video_path)
+        frame_paths = self._get_or_generate_frames(video_path, video_id)
+
         frames = []
-        for f in frame_files:
-            img_path = os.path.join(frame_dir, f)
-            image = Image.open(img_path).convert("RGB")
-            frames.append(self.transform(image))
-        frames_tensor = torch.stack(frames)
-        return frames_tensor, torch.tensor(label)
+        for frame_path in frame_paths:
+            frame = np.load(frame_path)
+            frame = torch.from_numpy(frame)
+            if self.transform:
+                frame = self.transform(frame)
+            frames.append(frame)
+        frames = torch.stack(frames)
+        return frames, torch.tensor(label)
+
+    def _video_id(self, path):
+        # Unique ID for caching, based on filename without extension
+        return os.path.splitext(os.path.basename(path))[0]
+
+    def _get_or_generate_frames(self, video_path, video_id):
+        frame_dir = os.path.join(self.cache_dir, video_id)
+        os.makedirs(frame_dir, exist_ok=True)
+        frame_paths = [os.path.join(frame_dir, f"frame_{i}.npy") for i in range(self.num_frames)]
+
+        # If all frames exist, return them
+        if all(os.path.exists(fp) for fp in frame_paths):
+            return frame_paths
+
+        # Otherwise, extract and save them
+        cap = cv2.VideoCapture(video_path)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        if total_frames < self.num_frames:
+            raise ValueError(f"Video {video_path} has fewer frames than requested: {total_frames} < {self.num_frames}")
+
+        indices = [int(i * total_frames / self.num_frames) for i in range(self.num_frames)]
+        selected_frames = []
+        for i in range(total_frames):
+            ret, frame = cap.read()
+            if not ret:
+                break
+            if i in indices:
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                frame_tensor = frame.astype(np.float32) / 255.0  # Normalize
+                np.save(frame_paths[indices.index(i)], frame_tensor.transpose(2, 0, 1))  # CHW format
+        cap.release()
+        return frame_paths

@@ -4,6 +4,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 import torchvision.transforms as T
 from datetime import datetime
+from tqdm import tqdm
 import json
 from dataset import generate_video_dataset, FrameDataset
 
@@ -45,7 +46,9 @@ class Trainer:
         total_loss = 0
         correct = 0
         total = 0
-        for frames, labels in self.train_loader:
+
+        loop = tqdm(self.train_loader, desc="Training", leave=False)
+        for frames, labels in loop:
             b, t, c, h, w = frames.size()
             frames = frames.view(b * t, c, h, w).to(self.device)
             labels = labels.to(self.device)
@@ -62,8 +65,11 @@ class Trainer:
             preds = logits.argmax(dim=1)
             correct += (preds == labels).sum().item()
             total += labels.size(0)
-            
-            print(f"\r[{total}/{len(self.train_loader.dataset)}] Loss: {loss.item()}", end="")
+
+            loop.set_postfix({
+                "loss": loss.item(),
+                "acc": f"{(correct / total):.4f}"
+            })
 
         acc = correct / total
         return total_loss / len(self.train_loader), acc

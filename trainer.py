@@ -111,6 +111,7 @@ class Trainer:
             json.dump(self.history, f, indent=2)
 
     def train(self):
+        print(f"Training {self.model_name} on {self.device}")
         self.prepare_data()
         for epoch in range(1, self.epochs + 1):
             loss, train_acc = self.train_epoch()

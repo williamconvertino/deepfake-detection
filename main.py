@@ -20,14 +20,12 @@ def main():
     if args.train:
         model = load_model(config_name=args.train, checkpoint=args.checkpoint)
         trainer = Trainer(model=model, num_frames=args.num_frames, epochs=args.num_epochs)
-        trainer.prepare_data()
         trainer.train()
     elif args.eval:
         if args.checkpoint is None:
             args.checkpoint = "best"
         model = load_model(config_name=args.eval, checkpoint=args.checkpoint)
         evaluator = Evaluator(model=model, num_frames=args.num_frames, aggregation=args.aggregator)
-        evaluator.prepare_data()
         evaluator.evaluate()
     elif args.visualize:
         visualizer = Visualizer(model_name=args.visualize)

@@ -39,7 +39,9 @@ class Evaluator:
         raise ValueError(f"Unknown aggregation method: {self.aggregation}")
 
     def evaluate(self):
-        self.prepare_data()
+        
+        print(f"Evaluating with aggregation method: {self.aggregation}")
+
         total_videos = 0
         correct_videos = 0
         total_frames = 0
@@ -49,7 +51,7 @@ class Evaluator:
         neg_vote_counts_pos_videos = []
         pos_vote_counts_neg_videos = []
         neg_vote_counts_neg_videos = []
-
+        
         with torch.no_grad():
             for frames, labels in self.test_loader:
                 b, t, c, h, w = frames.size()

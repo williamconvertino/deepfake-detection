@@ -11,6 +11,14 @@ chmod +x download.sh
 ./download.sh
 ```
 
+### Package Installation
+
+To install relevant packages, run the following command:
+
+```
+pip install -r requirements.txt
+```
+
 ## Usage
 
 ### 1. Train a Model

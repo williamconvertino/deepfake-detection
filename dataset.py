@@ -10,7 +10,7 @@ DEEPFAKES_ORIGINAL_PATH = "data/original_sequences/actors/c23/videos"
 DEEPFAKES_MANIPULATED_PATH = "data/manipulated_sequences/DeepFakeDetection/c23/videos"
 
 def deepfakes_title_parser(filename):
-    return filename.split("_")[0]
+    return filename[:3]
 
 def get_video_paths(base_path):
     video_files = []

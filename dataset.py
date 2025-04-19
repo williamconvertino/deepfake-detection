@@ -16,6 +16,7 @@ F2F_ORIGINAL_PATH = "data/original_sequences/youtube/c23/videos"
 F2F_MANIPULATED_PATH = "data/manipulated_sequences/Face2Face/c23/videos"
 
 def deepfakes_title_parser(filename):
+    print(filename)
     return filename[:3]
     
 def get_video_paths(base_path):

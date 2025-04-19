@@ -6,14 +6,11 @@ from torch.utils.data import Dataset
 
 SEED = 42
 
-DEEPFAKE_DETECTION_ORIGINAL_PATH = "data/original_sequences/actors/c23/videos"
-DEEPFAKE_DETECTION_MANIPULATED_PATH = "data/manipulated_sequences/DeepFakeDetection/c23/videos"
+DEEPFAKES_ORIGINAL_PATH = "data/original_sequences/actors/c23/videos"
+DEEPFAKES_MANIPULATED_PATH = "data/manipulated_sequences/DeepFakeDetection/c23/videos"
 
-def deepfake_detection_parser(filename):
-    parts = filename.split("__")
-    if len(parts) > 1:
-        return parts[1].split(".")[0]
-    return parts[0].split(".")[0]
+def deepfakes_title_parser(filename):
+    return filename.split("_")[0]
 
 def get_video_paths(base_path):
     video_files = []
@@ -24,9 +21,9 @@ def get_video_paths(base_path):
     return video_files
 
 def generate_video_dataset(
-    original_path=DEEPFAKE_DETECTION_ORIGINAL_PATH,
-    manipulated_path=DEEPFAKE_DETECTION_MANIPULATED_PATH,
-    title_parser=deepfake_detection_parser,
+    original_path=DEEPFAKES_ORIGINAL_PATH,
+    manipulated_path=DEEPFAKES_MANIPULATED_PATH,
+    title_parser=deepfakes_title_parser,
     train_ratio=0.7,
     val_ratio=0.15,
     test_ratio=0.15

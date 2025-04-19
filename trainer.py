@@ -62,6 +62,8 @@ class Trainer:
             preds = logits.argmax(dim=1)
             correct += (preds == labels).sum().item()
             total += labels.size(0)
+            
+            print(f"\r[{total}/{len(self.train_loader.dataset)}] Loss: {loss.item()}", end="")
 
         acc = correct / total
         return total_loss / len(self.train_loader), acc

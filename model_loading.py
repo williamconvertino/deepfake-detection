@@ -2,6 +2,7 @@ import os
 import yaml
 import torch
 import torchvision.models as models
+from models.vit import ViT
 
 CHECKPOINT_DIR = "checkpoints"
 
@@ -16,6 +17,8 @@ def get_model_instance(config):
     if model_type == "resnet18":
         model = models.resnet18(pretrained=config.get("pretrained", True))
         model.fc = torch.nn.Linear(model.fc.in_features, 2) # 2 classes (original and manipulated)
+    elif model_type == "vit":
+        model = ViT()
     else:
         raise ValueError(f"Unsupported model type: {model_type}")
 

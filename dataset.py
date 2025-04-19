@@ -43,6 +43,8 @@ def generate_video_dataset(
             title_to_videos[base_title] = []
         title_to_videos[base_title].append((video_path, label))
 
+    print([len(videos) for videos in title_to_videos.values()])
+
     assert all(len(videos) == 2 for videos in title_to_videos.values()), "Should have 2 videos per title (original and manipulated)"
 
     titles = list(title_to_videos.keys())

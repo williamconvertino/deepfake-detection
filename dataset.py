@@ -45,6 +45,7 @@ def generate_video_dataset(
 
     title_to_videos = {}
     for video_path in original_videos + manipulated_videos:
+        print(dataset_type, video_path)
         base_title = title_parser(os.path.basename(video_path))
         label = 0 if "original" in video_path else 1
         if base_title not in title_to_videos:

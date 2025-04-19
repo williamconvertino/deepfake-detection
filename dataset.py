@@ -16,7 +16,6 @@ F2F_ORIGINAL_PATH = "data/original_sequences/youtube/c23/videos"
 F2F_MANIPULATED_PATH = "data/manipulated_sequences/Face2Face/c23/videos"
 
 def deepfakes_title_parser(filename):
-    print(filename)
     return filename[:3]
     
 def get_video_paths(base_path):
@@ -34,11 +33,11 @@ def generate_video_dataset(
     test_ratio=0.15
 ):
     if dataset_type == "deepfakes":
-        title_parser=deepfakes_title_parser,    
+        title_parser=deepfakes_title_parser    
         original_videos = get_video_paths(DEEPFAKES_ORIGINAL_PATH)
         manipulated_videos = get_video_paths(DEEPFAKES_MANIPULATED_PATH)
     elif dataset_type == "f2f":
-        title_parser=deepfakes_title_parser,    
+        title_parser=deepfakes_title_parser  
         original_videos = get_video_paths(F2F_ORIGINAL_PATH)
         manipulated_videos = get_video_paths(F2F_MANIPULATED_PATH)
     else:
@@ -46,9 +45,8 @@ def generate_video_dataset(
 
     title_to_videos = {}
     for video_path in original_videos + manipulated_videos:
-        print(dataset_type, video_path)
+
         base_title = title_parser(os.path.basename(video_path))
-        print(base_title)
         
         label = 0 if "original" in video_path else 1
         if base_title not in title_to_videos:

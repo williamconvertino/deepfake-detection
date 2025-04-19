@@ -6,6 +6,7 @@ import re
 import os
 import json
 from datetime import datetime
+from tqdm import tqdm
 
 class Evaluator:
     def __init__(self, model, dataset, num_frames=5, batch_size=8, aggregation="50_vote", device=None):
@@ -41,7 +42,6 @@ class Evaluator:
         raise ValueError(f"Unknown aggregation method: {self.aggregation}")
 
     def evaluate(self):
-        
         print(f"Evaluating with aggregation method: {self.aggregation}")
 
         self.prepare_data()
@@ -55,9 +55,9 @@ class Evaluator:
         neg_vote_counts_pos_videos = []
         pos_vote_counts_neg_videos = []
         neg_vote_counts_neg_videos = []
-        
+
         with torch.no_grad():
-            for frames, labels in self.test_loader:
+            for frames, labels in tqdm(self.test_loader, desc="Evaluating", unit="batch"):
                 b, t, c, h, w = frames.size()
                 frames = frames.view(b * t, c, h, w).to(self.device)
                 labels = labels.to(self.device)

@@ -9,7 +9,7 @@ import json
 from dataset import generate_video_dataset, FrameDataset
 
 class Trainer:
-    def __init__(self, model, num_frames=5, batch_size=8, epochs=10, num_workers=8, lr=1e-4, device=None):
+    def __init__(self, model, num_frames=5, batch_size=32, epochs=10, num_workers=8, lr=1e-4, device=None):
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.model = model.to(self.device)
         self.model_name = model.name

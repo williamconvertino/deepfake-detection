@@ -26,7 +26,7 @@ def main():
         if args.checkpoint is None:
             args.checkpoint = "best"
         model = load_model(config_name=args.eval, checkpoint=args.checkpoint)
-        evaluator = Evaluator(model=model, dataset=args.dataset, num_frames=args.num_frames, aggregation=args.aggregator)
+        evaluator = Evaluator(model=model, dataset=args.dataset, num_frames=args.num_frames, aggregation=args.agg)
         evaluator.evaluate()
     elif args.visualize:
         visualizer = Visualizer(model_name=args.visualize)

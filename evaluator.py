@@ -1,0 +1,129 @@
+import torch
+from torch.utils.data import DataLoader
+from dataset import generate_video_dataset, FrameDataset
+import torchvision.transforms as T
+import re
+import os
+import json
+from datetime import datetime
+
+class Evaluator:
+    def __init__(self, model, num_frames=5, batch_size=8, aggregation="50_vote", device=None):
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = model.to(self.device)
+        self.model.eval()
+        self.num_frames = num_frames
+        self.batch_size = batch_size
+        self.aggregation = aggregation # "average" or "X_vote"
+
+        self.transform = T.Compose([
+            T.ToPILImage(),
+            T.Resize((224, 224)),
+            T.ToTensor()
+        ])
+
+    def prepare_data(self):
+        _, _, test_data = generate_video_dataset()
+        self.test_loader = DataLoader(FrameDataset(test_data, self.num_frames, transform=self.transform), batch_size=self.batch_size, shuffle=False)
+
+    def aggregate_logits(self, logits):
+        b, t, c = logits.size()
+        if self.aggregation == "average":
+            return logits.mean(dim=1)
+        vote_match = re.match(r"(\d+)_vote", self.aggregation)
+        if vote_match:
+            threshold = int(vote_match.group(1))
+            preds = logits.argmax(dim=2)
+            counts = torch.stack([(preds == i).sum(dim=1) for i in range(c)], dim=1)
+            return counts
+        raise ValueError(f"Unknown aggregation method: {self.aggregation}")
+
+    def evaluate(self):
+        self.prepare_data()
+        total_videos = 0
+        correct_videos = 0
+        total_frames = 0
+        correct_frames = 0
+
+        pos_vote_counts_pos_videos = []
+        neg_vote_counts_pos_videos = []
+        pos_vote_counts_neg_videos = []
+        neg_vote_counts_neg_videos = []
+
+        with torch.no_grad():
+            for frames, labels in self.test_loader:
+                b, t, c, h, w = frames.size()
+                frames = frames.view(b * t, c, h, w).to(self.device)
+                labels = labels.to(self.device)
+
+                logits = self.model(frames)
+                logits = logits.view(b, t, -1)
+
+                frame_preds = logits.argmax(dim=2)
+                correct_frames += (frame_preds == labels.unsqueeze(1)).sum().item()
+                total_frames += b * t
+
+                if self.aggregation == "average":
+                    agg_logits = self.aggregate_logits(logits)
+                    final_preds = agg_logits.argmax(dim=1)
+                elif "_vote" in self.aggregation:
+                    counts = self.aggregate_logits(logits)
+                    final_preds = counts.argmax(dim=1)
+                    for i in range(b):
+                        if labels[i] == 1:
+                            pos_vote_counts_pos_videos.append(counts[i, 1].item())
+                            neg_vote_counts_pos_videos.append(counts[i, 0].item())
+                        else:
+                            pos_vote_counts_neg_videos.append(counts[i, 1].item())
+                            neg_vote_counts_neg_videos.append(counts[i, 0].item())
+                else:
+                    raise ValueError("Unsupported aggregation type")
+
+                correct_videos += (final_preds == labels).sum().item()
+                total_videos += b
+
+        frame_acc = correct_frames / total_frames
+        video_acc = correct_videos / total_videos
+
+        def compute_vote_stats(pos_votes, neg_votes):
+            n = len(pos_votes)
+            if n == 0:
+                return {"avg_pos_votes": None, "avg_pos_percent": None,
+                        "avg_neg_votes": None, "avg_neg_percent": None}
+            return {
+                "avg_pos_votes": sum(pos_votes) / n,
+                "avg_pos_percent": sum(pos_votes) / (n * self.num_frames),
+                "avg_neg_votes": sum(neg_votes) / n,
+                "avg_neg_percent": sum(neg_votes) / (n * self.num_frames)
+            }
+
+        pos_video_stats = compute_vote_stats(pos_vote_counts_pos_videos, neg_vote_counts_pos_videos)
+        neg_video_stats = compute_vote_stats(pos_vote_counts_neg_videos, neg_vote_counts_neg_videos)
+
+        results = {
+            "aggregation": self.aggregation,
+            "video_accuracy": video_acc,
+            "frame_accuracy": frame_acc,
+            "video_stats": {
+                "positive_videos": pos_video_stats,
+                "negative_videos": neg_video_stats
+            },
+            "meta": {
+                "total_videos": total_videos,
+                "total_frames": total_frames,
+                "correct_videos": correct_videos,
+                "correct_frames": correct_frames,
+                "num_frames_per_video": self.num_frames
+            }
+        }
+
+        print(json.dumps(results, indent=2))
+
+        log_dir = os.path.join("logs", self.model.name)
+        os.makedirs(log_dir, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        log_path = os.path.join(log_dir, f"test_results_{self.aggregation}_{timestamp}.json")
+
+        with open(log_path, "w") as f:
+            json.dump(results, f, indent=2)
+        print(f"\nSaved evaluation results to {log_path}")

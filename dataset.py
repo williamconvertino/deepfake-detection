@@ -6,15 +6,12 @@ from torch.utils.data import Dataset
 
 SEED = 42
 
-DEEPFAKES_ORIGINAL_PATH = "data/original_sequences/actors/c23/videos"
-DEEPFAKES_MANIPULATED_PATH = "data/manipulated_sequences/DeepFakeDetection/c23/videos"
+DEEPFAKES_ORIGINAL_PATH = "data/original_sequences/youtube/c23/videos"
+DEEPFAKES_MANIPULATED_PATH = "data/manipulated_sequences/Deepfakes/c23/videos"
 
-def deepfakes_title_parser(filepath):
-    filename = os.path.basename(filepath)
-    basename = filename[:3]
-    print(f"Parsing title from {filename} to {basename}")
-    return basename
-
+def deepfakes_title_parser(filename):
+    return filename[:3]
+    
 def get_video_paths(base_path):
     video_files = []
     for root, _, files in os.walk(base_path):
@@ -36,14 +33,12 @@ def generate_video_dataset(
 
     title_to_videos = {}
     for video_path in original_videos + manipulated_videos:
-        base_title = title_parser(video_path)
+        base_title = title_parser(os.path.basename(video_path))
         label = 0 if "original" in video_path else 1
         if base_title not in title_to_videos:
             title_to_videos[base_title] = []
         title_to_videos[base_title].append((video_path, label))
-
-    print([(title, len(videos)) for title, videos in title_to_videos.items()])
-
+        
     assert all(len(videos) == 2 for videos in title_to_videos.values()), "Should have 2 videos per title (original and manipulated)"
 
     titles = list(title_to_videos.keys())

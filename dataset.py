@@ -40,6 +40,10 @@ def generate_video_dataset(
         title_parser=deepfakes_title_parser  
         original_videos = get_video_paths(F2F_ORIGINAL_PATH)
         manipulated_videos = get_video_paths(F2F_MANIPULATED_PATH)
+    elif dataset_type == "combined":
+        title_parser=deepfakes_title_parser  
+        original_videos = get_video_paths(DEEPFAKES_ORIGINAL_PATH)
+        manipulated_videos = get_video_paths(DEEPFAKES_MANIPULATED_PATH) + get_video_paths(F2F_MANIPULATED_PATH)
     else:
         raise ValueError("Unsupported dataset type. Choose 'deepfakes' or 'f2f'.")
 
@@ -52,8 +56,11 @@ def generate_video_dataset(
         if base_title not in title_to_videos:
             title_to_videos[base_title] = []
         title_to_videos[base_title].append((video_path, label))
-        
-    assert all(len(videos) == 2 for videos in title_to_videos.values()), "Should have 2 videos per title (original and manipulated)"
+    
+    if dataset_type == "combined":
+        assert all(len(videos) == 3 for videos in title_to_videos.values()), "Should have 3 videos per title (original and 2 manipulated)"
+    else: 
+        assert all(len(videos) == 2 for videos in title_to_videos.values()), "Should have 2 videos per title (original and manipulated)"
 
     titles = list(title_to_videos.keys())
     random.seed(SEED)

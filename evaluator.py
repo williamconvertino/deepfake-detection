@@ -154,4 +154,6 @@ class Evaluator:
                 best_results = results
                 
         print(f"Best aggregation method: {best_results['aggregation']}")
-        print(best_results)
+        
+        best_agg_method = best_results["aggregation"]
+        best_results = self.evaluate(aggregation=best_agg_method, split="test")

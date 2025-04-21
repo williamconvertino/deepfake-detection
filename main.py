@@ -8,6 +8,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--train", type=str, default=None, help="Use with desired config name to train the corresponding model")
     parser.add_argument("--eval", type=str, default=None, help="Use with desired config name to evaluate the corresponding model")
+    parser.add_argument("--search_eval", type=str, default=None, help="Use with desired config name to evaluate the corresponding model (and search for best aggregation)")
     parser.add_argument("--visualize", type=str, help="Use with desired config name to visualize the training curve")
     parser.add_argument("--dataset", type=str, default="deepfakes", help="Dataset to use (deepfakes, f2f, or combined)")
     parser.add_argument("--checkpoint", type=str, default=None, help="'best' or 'epoch_X' or leave empty to train from scratch")
@@ -26,8 +27,14 @@ def main():
         if args.checkpoint is None:
             args.checkpoint = "best"
         model = load_model(config_name=args.eval, checkpoint=args.checkpoint)
-        evaluator = Evaluator(model=model, dataset=args.dataset, num_frames=args.num_frames, aggregation=args.agg)
-        evaluator.evaluate()
+        evaluator = Evaluator(model=model, dataset=args.dataset, num_frames=args.num_frames)
+        evaluator.evaluate(aggregation=args.agg)
+    elif args.search_eval:
+        if args.checkpoint is None:
+            args.checkpoint = "best"
+        model = load_model(config_name=args.search_eval, checkpoint=args.checkpoint)
+        evaluator = Evaluator(model=model, dataset=args.dataset, num_frames=args.num_frames)
+        evaluator.search_evaluate()
     elif args.visualize:
         visualizer = Visualizer(model_name=args.visualize)
         visualizer.plot(save=True, show=False)

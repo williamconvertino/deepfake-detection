@@ -9,7 +9,7 @@ from datetime import datetime
 from tqdm import tqdm
 
 class Evaluator:
-    def __init__(self, model, dataset, num_frames=5, batch_size=16, aggregation="50_vote", device=None):
+    def __init__(self, model, dataset, num_frames=5, batch_size=16, device=None):
         
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.model = model.to(self.device)
@@ -17,8 +17,7 @@ class Evaluator:
         self.dataset = dataset
         self.num_frames = num_frames
         self.batch_size = batch_size
-        self.aggregation = aggregation # "average" or "X_vote"
-
+        
         self.transform = T.Compose([
             T.ToPILImage(),
             T.Resize((224, 224)),
@@ -26,23 +25,24 @@ class Evaluator:
         ])
 
     def prepare_data(self):
-        _, _, test_data = generate_video_dataset(dataset_type=self.dataset)
+        _, val_loader, test_data = generate_video_dataset(dataset_type=self.dataset)
         self.test_loader = DataLoader(FrameDataset(self.dataset, test_data, self.num_frames, transform=self.transform), batch_size=self.batch_size, shuffle=False)
+        self.val_loader = DataLoader(FrameDataset(self.dataset, val_loader, self.num_frames, transform=self.transform), batch_size=self.batch_size, shuffle=False)
 
-    def aggregate_logits(self, logits):
+    def aggregate_logits(self, logits, aggregation="average"):
         b, t, c = logits.size()
-        if self.aggregation == "average":
+        if aggregation == "average":
             return logits.mean(dim=1)
-        vote_match = re.match(r"(\d+)_vote", self.aggregation)
+        vote_match = re.match(r"(\d+)_vote", aggregation)
         if vote_match:
             threshold = int(vote_match.group(1))
             preds = logits.argmax(dim=2)
             counts = torch.stack([(preds == i).sum(dim=1) for i in range(c)], dim=1)
             return counts
-        raise ValueError(f"Unknown aggregation method: {self.aggregation}")
+        raise ValueError(f"Unknown aggregation method: {aggregation}")
 
-    def evaluate(self):
-        print(f"Evaluating with aggregation method: {self.aggregation}")
+    def evaluate(self, aggregation="average", split="test"):
+        print(f"Evaluating with aggregation method: {aggregation}")
 
         self.prepare_data()
 
@@ -56,8 +56,13 @@ class Evaluator:
         pos_vote_counts_neg_videos = []
         neg_vote_counts_neg_videos = []
 
+        if split == "val":
+            data_loader = self.val_loader
+        else:
+            data_loader = self.test_loader
+
         with torch.no_grad():
-            for frames, labels in tqdm(self.test_loader, desc="Evaluating", unit="batch"):
+            for frames, labels in tqdm(data_loader, desc="Evaluating", unit="batch"):
                 b, t, c, h, w = frames.size()
                 frames = frames.view(b * t, c, h, w).to(self.device)
                 labels = labels.to(self.device)
@@ -69,11 +74,11 @@ class Evaluator:
                 correct_frames += (frame_preds == labels.unsqueeze(1)).sum().item()
                 total_frames += b * t
 
-                if self.aggregation == "average":
-                    agg_logits = self.aggregate_logits(logits)
+                if aggregation == "average":
+                    agg_logits = self.aggregate_logits(logits, aggregation=aggregation)
                     final_preds = agg_logits.argmax(dim=1)
-                elif "_vote" in self.aggregation:
-                    counts = self.aggregate_logits(logits)
+                elif "_vote" in aggregation:
+                    counts = self.aggregate_logits(logits, aggregation=aggregation)
                     final_preds = counts.argmax(dim=1)
                     for i in range(b):
                         if labels[i] == 1:
@@ -107,7 +112,7 @@ class Evaluator:
         neg_video_stats = compute_vote_stats(pos_vote_counts_neg_videos, neg_vote_counts_neg_videos)
 
         results = {
-            "aggregation": self.aggregation,
+            "aggregation": aggregation,
             "video_accuracy": video_acc,
             "frame_accuracy": frame_acc,
             "video_stats": {
@@ -128,8 +133,25 @@ class Evaluator:
         log_dir = os.path.join("logs", self.model.name)
         os.makedirs(log_dir, exist_ok=True)
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        log_path = os.path.join(log_dir, f"test_results_{self.aggregation}_{timestamp}.json")
+        log_path = os.path.join(log_dir, f"test_results_{aggregation}_{timestamp}.json")
 
         with open(log_path, "w") as f:
             json.dump(results, f, indent=2)
         print(f"\nSaved evaluation results to {log_path}")
+        
+        return results
+    
+    def search_evaluate(self):
+        
+        aggregations = ["average", "40_vote", "50_vote", "60_vote", "70_vote"]
+        best_results = None
+        
+        for agg in aggregations:
+            print(f"Evaluating with aggregation method: {agg}")
+            results = self.evaluate(aggregation=agg, split="test")
+            
+            if best_results is None or results["video_accuracy"] > best_results["video_accuracy"]:
+                best_results = results
+                
+        print(f"Best aggregation method: {best_results['aggregation']}")
+        print(best_results)

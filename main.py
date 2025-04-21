@@ -17,7 +17,7 @@ def main():
     parser.add_argument("--agg", type=str, default="50_vote", help="Aggregation method for evaluation (average or X_vote)")
     args = parser.parse_args()
 
-    assert args.train or args.eval, "Either --train or --eval must be specified"
+    assert args.train or args.eval or args.search_eval, "--train, --eval, or --search_eval must be specified"
 
     if args.train:
         model = load_model(config_name=args.train, checkpoint=args.checkpoint)

@@ -148,7 +148,7 @@ class Evaluator:
         
         for agg in aggregations:
             print(f"Evaluating with aggregation method: {agg}")
-            results = self.evaluate(aggregation=agg, split="test")
+            results = self.evaluate(aggregation=agg, split="val")
             
             if best_results is None or results["video_accuracy"] > best_results["video_accuracy"]:
                 best_results = results

@@ -3,6 +3,7 @@ import yaml
 import torch
 import torchvision.models as models
 from models.vit import ViT
+from models.efficientnet import EfficientNet
 
 CHECKPOINT_DIR = "checkpoints"
 
@@ -19,6 +20,8 @@ def get_model_instance(config):
         model.fc = torch.nn.Linear(model.fc.in_features, 2) # 2 classes (original and manipulated)
     elif model_type == "vit":
         model = ViT()
+    elif model_type == "efficientnet_b0":
+        model = EfficientNet()
     else:
         raise ValueError(f"Unsupported model type: {model_type}")
 

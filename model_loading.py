@@ -22,6 +22,8 @@ def get_model_instance(config):
         model = ViT()
     elif model_type == "efficientnet_b0":
         model = EfficientNet()
+    elif model_type == "xception":
+        model = Xception()
     else:
         raise ValueError(f"Unsupported model type: {model_type}")
 

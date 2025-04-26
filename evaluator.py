@@ -33,6 +33,9 @@ class Evaluator:
         b, t, c = logits.size()
         if aggregation == "average":
             return logits.mean(dim=1)
+        elif aggregation == "max":
+            return logits.max(dim=1).values
+        
         vote_match = re.match(r"(\d+)_vote", aggregation)
         if vote_match:
             threshold = int(vote_match.group(1))
@@ -74,7 +77,7 @@ class Evaluator:
                 correct_frames += (frame_preds == labels.unsqueeze(1)).sum().item()
                 total_frames += b * t
 
-                if aggregation == "average":
+                if aggregation == "average" or aggregation == "max":
                     agg_logits = self.aggregate_logits(logits, aggregation=aggregation)
                     final_preds = agg_logits.argmax(dim=1)
                 elif "_vote" in aggregation:
@@ -143,7 +146,7 @@ class Evaluator:
     
     def search_evaluate(self):
         
-        aggregations = ["average", "40_vote", "50_vote", "60_vote", "70_vote"]
+        aggregations = ["average", "25_vote", "50_vote", "75_vote", "max"]
         best_results = None
         
         for agg in aggregations:
